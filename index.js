@@ -10,7 +10,7 @@ app.use(morgan('dev'));
 
 
 
-app.use('/bpj', apiRoutes);
+app.use('/api-bpjsfktl', apiRoutes);
 
 app.get('/', (req, res) => {
   // Tampilkan panduan seperti fungsi tampil() di PHP

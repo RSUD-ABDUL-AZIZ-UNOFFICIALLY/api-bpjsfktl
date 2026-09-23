@@ -289,7 +289,7 @@ const auth = async (req, res) => {
     const username = req.headers['x-username'];
     const password = req.headers['x-password'];
     if (!username || !password) {
-
+        let idLog = genLogId();
         dataLog.info(idLog, 'x-username dan x-password diperlukan');
         return res.status(201).json({
             'metadata': {

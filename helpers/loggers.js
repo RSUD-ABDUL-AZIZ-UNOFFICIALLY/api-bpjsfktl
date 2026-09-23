@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const axios = require('axios');
 class dataLog {
-    static APP_NAME = "MJKN";
+    static APP_NAME = "api-bpjsfktl";
     // Ganti URL ini dengan endpoint API tujuan Anda
     static LOG_API_URL = "https://api.spairum.my.id/api/gobi/v1/logs"
     // Method untuk log debug
