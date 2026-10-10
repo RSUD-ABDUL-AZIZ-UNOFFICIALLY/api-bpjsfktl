@@ -8,10 +8,15 @@ const {
     dokter,
     reg_periksa,
     pasien,
+    set_no_rkm_medis,
     referensi_mobilejkn_bpjs,
     referensi_mobilejkn_bpjs_batal,
     booking_operasi,
     paket_operasi,
+    kelurahan,
+    kecamatan,
+    kabupaten,
+    propinsi,
     setting
 } = require("../models");
 const { isValidDate } = require("../helpers");
@@ -1357,16 +1362,121 @@ const jadwalOperasiPasien = async (req, res) => {
         });
     }
 };
+
+const generateNoRkmMedis = (lastNumber) => {
+    const nextNum = parseInt(lastNumber, 10) + 1;
+    return String(nextNum).padStart(6, '0');
+};
+const validTeks = (text, maxLength) => {
+    if (!text) return '-';
+    return String(text).trim().substring(0, maxLength);
+};
 const pasienBaru = async (req, res) => {
-    // Implementasi pasien baru
-    let idLog = genLogId();
-    dataLog.info(idLog, error);
-    return res.status(201).json({
-        metadata: {
-            message: "Maaf, fitur Pasien Baru belum tersedia. | #" + idLog,
-            code: 500
+    const transaction = await sequelize.transaction();
+
+    try {
+        const body = req.body;
+
+        // 1. Ambil nomor RM terakhir dari tabel set_no_rkm_medis dengan Lock (FOR UPDATE)
+        const lastRMRecord = await set_no_rkm_medis.findOne({
+            lock: transaction.LOCK.UPDATE,
+            transaction
+        });
+
+        // Tentukan no_rkm_medis baru (default '000001' jika tabel set_no_rkm_medis masih kosong)
+        let newNoRkmMedis = '000001';
+        if (lastRMRecord && lastRMRecord.no_rkm_medis) {
+            newNoRkmMedis = generateNoRkmMedis(lastRMRecord.no_rkm_medis);
         }
-    });
+
+        // 2. Mapping Request Body ke Column Model Pasien
+        // 2. Lookup Kode Wilayah berdasarkan Nama Wilayah dari Payload
+        const [dataKel, dataKec, dataKab, dataProp] = await Promise.all([
+            decode.namakel ? kelurahan.findOne({ where: { nm_kel: validTeks(decode.namakel, 30) }, transaction }) : null,
+            decode.namakec ? kecamatan.findOne({ where: { nm_kec: validTeks(decode.namakec, 30) }, transaction }) : null,
+            decode.namadati2 ? kabupaten.findOne({ where: { nm_kab: validTeks(decode.namadati2, 30) }, transaction }) : null,
+            decode.namaprop ? propinsi.findOne({ where: { nm_prop: validTeks(decode.namaprop, 30) }, transaction }) : null,
+        ]);
+
+        const kdKel = dataKel ? dataKel.kd_kel : (parseInt(decode.kodekel, 10) || 0);
+        const kdKec = dataKec ? dataKec.kd_kec : (parseInt(decode.kodekec, 10) || 0);
+        const kdKab = dataKab ? dataKab.kd_kab : (parseInt(decode.kodedati2, 10) || 0);
+        const kdProp = dataProp ? dataProp.kd_prop : (parseInt(decode.kodeprop, 10) || 0);
+
+        // 3. Mapping data sesuai posisi nilai pada SQL Insert Khanza
+        const newPasienData = {
+            no_rkm_medis: newNoRkmMedis,
+            nm_pasien: validTeks(decode.nama, 60),
+            no_ktp: validTeks(decode.nik, 20),
+            jk: validTeks(decode.jeniskelamin, 20) === 'L' ? 'L' : 'P',
+            tmp_lahir: '-',
+            tgl_lahir: decode.tanggallahir,
+            nm_ibu: '-',
+            alamat: validTeks(decode.alamat, 100),
+            gol_darah: '-',
+            pekerjaan: '-',
+            stts_nikah: 'JOMBLO',
+            agama: '-',
+            tgl_daftar: new Date(),
+            no_tlp: validTeks(decode.nohp, 20),
+            umur: '0',
+            pnd: '-',
+            keluarga: 'SAUDARA',
+            namakeluarga: '-',
+            kd_pj: 'BPJ', // Sesuaikan default penjamin (misal BPJ)
+            no_peserta: validTeks(decode.nomorkartu, 20),
+            kd_kel: kdKel,
+            kd_kec: kdKec,
+            kd_kab: kdKab,
+            pekerjaanpj: '-',
+            alamatpj: validTeks(decode.alamat, 100),
+            kelurahanpj: validTeks(decode.namakel, 30),
+            kecamatanpj: validTeks(decode.namakec, 30),
+            kabupatenpj: validTeks(decode.namadati2, 30),
+            perusahaan_pasien: '-',
+            suku_bangsa: 1,
+            bahasa_pasien: 1,
+            cacat_fisik: 1,
+            email: '-',
+            nip: '-',
+            kd_prop: kdProp,
+            propinsipj: validTeks(decode.namaprop, 30)
+        };
+
+
+        // 3. Simpan data pasien baru
+        const createdPasien = await pasien.create(newPasienData, { transaction });
+
+        // 4. Update / Insert (Upsert) nilai nomor RM terakhir ke set_no_rkm_medis
+        if (lastRMRecord) {
+            await lastRMRecord.update({ no_rkm_medis: newNoRkmMedis }, { transaction });
+        } else {
+            await set_no_rkm_medis.create({ no_rkm_medis: newNoRkmMedis }, { transaction });
+        }
+        // Commit transaksi jika semua langkah berhasil
+        await transaction.commit();
+        return res.status(200).json({
+            response: {
+                norm: newNoRkmMedis
+            },
+            metadata: {
+                message: "Ok",
+                code: 200
+            }
+        });
+    } catch (error) {
+        // Rollback transaksi jika terjadi kesalahan
+        await transaction.rollback();
+        console.error('Error createPasien:', error);
+        let idLog = genLogId();
+        dataLog.info(idLog, error);
+        return res.status(201).json({
+            metadata: {
+                message: "Terjadi kesalahan internal server.| #" + idLog,
+                code: 500
+            }
+        });
+    }
 };
 
 module.exports = {
