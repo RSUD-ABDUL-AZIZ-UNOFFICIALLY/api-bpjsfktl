@@ -778,7 +778,7 @@ const checkinAntrean = async (req, res) => {
 
         // Konversi timestamp (waktu) dari ms ke Date object lokal
         const waktuMs = parseInt(decode.waktu, 10);
-        const checkinDate = new Date(waktuMs);
+        const checkinDate = new Date(waktuMs) - (7 * 60 * 60 * 1000);
 
         // Ekstraksi format YYYY-MM-DD menggunakan Local Time
         const year = checkinDate.getFullYear();
