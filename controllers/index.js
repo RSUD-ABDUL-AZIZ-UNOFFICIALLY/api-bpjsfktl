@@ -634,7 +634,7 @@ const ambilAntrean = async (req, res) => {
         let tglLahir = new Date(datapeserta.tgl_lahir);
         let tglSekarang = new Date();
             umur = (tglSekarang.getFullYear() - tglLahir.getFullYear()) * 12 + (tglSekarang.getMonth() - tglLahir.getMonth());
-            sttsumur = "Bln";
+            sttsumur = "Bl";
         }
 
         // Mapping Jenis Kunjungan
@@ -650,7 +650,8 @@ const ambilAntrean = async (req, res) => {
         const transactionResult = await sequelize.transaction(async (t) => {
             
             // Insert Referensi Mobile JKN
-            const estimasiWaktu = new Date(`${decode.tanggalperiksa} ${dataJadwal.jam_mulai}`).getTime() + (5 * 60 * 1000);
+            let pengkali = Number(noReg) + 2;
+            const estimasiWaktu = new Date(`${decode.tanggalperiksa} ${dataJadwal.jam_mulai}`).getTime() + (pengkali * 60 * 1000) - (7 * 60 * 60 * 1000);
             const kuotaSisaUpdate = dataJadwal.kuota - sisakuota - 1;
 
             await referensi_mobilejkn_bpjs.create({
@@ -750,7 +751,7 @@ const ambilAntrean = async (req, res) => {
 
         return res.status(201).json({
             metadata: {
-                message: "Maaf terjadi kesalahan, hubungi Admnistrator | ID Error #: " + idLog,
+                message: "Maaf terjadi kesalahan, hubungi Admnistrator | ID Error #" + idLog,
                 code: 201
             }
         });
@@ -852,7 +853,9 @@ const checkinAntrean = async (req, res) => {
                     metadata: { message: 'Ok', code: 200 }
                 });
             } else {
-                return sendResponse('Maaf terjadi kesalahan, hubungi Admnistrator..', 401);
+                let idLog = genLogId();
+                dataLog.error(idLog, error);
+                return sendResponse("Maaf terjadi kesalahan, hubungi Admnistrator| ID Error #" + idLog, 401);
             }
         }
 
@@ -863,7 +866,7 @@ const checkinAntrean = async (req, res) => {
         dataLog.error(idLog, error);
         return res.status(201).json({
             metadata: {
-                message: "Maaf terjadi kesalahan, hubungi Admnistrator | ID Log: " + idLog,
+                message: "Maaf terjadi kesalahan, hubungi Admnistrator | ID Error #" + idLog,
                 code: 201
             }
         });
@@ -991,7 +994,7 @@ const batalAntrean = async (req, res) => {
         dataLog.error(idLog, error);
         return res.status(201).json({
             metadata: {
-                message: "Maaf Terjadi Kesalahan, Hubungi Admnistrator |#" + idLog,
+                message: "Maaf Terjadi Kesalahan, Hubungi Admnistrator |ID Error #" + idLog,
                 code: 201
             }
         });
