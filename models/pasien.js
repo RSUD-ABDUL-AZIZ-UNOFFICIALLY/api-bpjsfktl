@@ -56,6 +56,7 @@ module.exports = (sequelize, DataTypes) => {
         kd_kec: DataTypes.INTEGER,
         kd_kab: DataTypes.INTEGER,
         pekerjaan: DataTypes.STRING,
+        stts_nikah: DataTypes.ENUM('BELUM MENIKAH', 'MENIKAH', 'JANDA', 'DUDHA', 'JOMBLO', 'CERAI HIDUP', 'CERAI MATI'),
         agama: DataTypes.STRING,
         nm_ibu: DataTypes.STRING,
         namakeluarga: DataTypes.STRING,
